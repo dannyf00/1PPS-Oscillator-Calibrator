@@ -5,6 +5,7 @@
 //2. a 1PPS generator, like a GPS
 //
 //v0.1: 4/24/2018 - initial release
+//v0.2: 4/25/2018 - fixed a minor bug in initialization
 //
 //Connections:
 //
@@ -32,17 +33,18 @@
 //
 
 //global defines
-#define F_CLK			F_CPU		//estimated clock speed
+#define F_CLK			(F_CPU)		//estimated clock speed
 #define F_IN 			1 			//frequency of input pulse train 
-#define F_OVERSAMPLE	16			//number of oversamples
+#define F_OVERSAMPLE	4			//number of oversamples
 
 //global variable
 volatile uint16_t tick0, tick1;		//tick0=previous tick / capture, tick1 = current tick / capture
-volatile  int32_t freq=F_CLK;		//current capture
+volatile uint32_t freq=F_CLK;		//current capture
 volatile  int32_t freq_error;		//frequency error 
 volatile uint8_t  freq_available=0;	//frequency available indicator: 1->new data available, 0->no new data available
           int32_t freq_sum;			//moving sumes
           int32_t freq_i, freq_f;	//interger + fractional parts of freq
+char uRAM[80];						//uart buffer
 
 //timer1 icp ISR
 ISR(TIMER1_CAPT_vect) {
@@ -51,8 +53,8 @@ ISR(TIMER1_CAPT_vect) {
 	//tick1 = ICR1L;				//read ICPL first
 	//tick1|= ICR1H << 8;			//read ICPH second
 	tick1 = ICR1;
-	freq = (F_CLK & 0xffff0000ul) + (int16_t) (tick1 - tick0);	//calculate the frequency
-	//freq = (tick0+F_CLK - tick0) - (F_CLK % 65536);
+	//freq = (F_CLK & 0xffff0000ul) + (int16_t) (tick1 - tick0);	//calculate the frequency
+	freq_error = (int16_t) (tick1 - (tick0 + F_CLK)); freq = F_CLK + freq_error;	//calculate the frequency / frequency error
 	tick0 = tick1;					//update captured tick
 	freq_available = 1;				//1->new data available
 }
@@ -62,8 +64,8 @@ ISR(TIMER1_CAPT_vect) {
 //ICP interrupt not yet enabled
 void tmr1_init(void) {
 	//stop timer1
-	TCCR1B = (TCCR1B &~0x07) | (0x00 & 0x07);	//0->stop the timer1
-	//TCCR1A = TCCR1C = 0;
+	//TCCR1B = (TCCR1B &~0x07) | (0x00 & 0x07);	//0->stop the timer1
+	TCCR1A = TCCR1B = TCCR1C = 0;	//reset to default values, and stops the timer1
 	TCCR1B&=~(1<<ICNC1);			//0->disable noise cancelling, 1->enable noise cancelling
 	TCCR1B|= (1<<ICES1);			//0->trigger on falling edge, 1->trigger on rising edge 
 	TCNT1 = 0;						//reset timer1: optional
@@ -129,8 +131,9 @@ void loop() {
 		freq_f = freq_sum - freq_i * F_OVERSAMPLE;
 
 		//send the string
-		//Serial.print("freq = "); Serial.print(freq); Serial.print("Hz.\n\r");
-		Serial.print("freq = "); Serial.print(freq_i); Serial.print("."); Serial.print((freq_f * 1000 + F_OVERSAMPLE / 2) / F_OVERSAMPLE); Serial.print("Hz.\n\r");
+		Serial.print("freq = "); Serial.print(freq); Serial.print("Hz.\n\r");
+		//Serial.print("freq = "); Serial.print(freq_i); Serial.print("."); Serial.print((freq_f * 1000 + F_OVERSAMPLE / 2) / F_OVERSAMPLE); Serial.print("Hz, error = "); Serial.print(freq_i - F_CLK); Serial.print("Hz.\n\r");
+		//sprintf(uRAM, "freq = %8ld.%03dHz", freq_i, (freq_f * 1000 + F_OVERSAMPLE / 2) / F_OVERSAMPLE); Serial.print(uRAM); Serial.print(", error = "); Serial.print(freq_i - F_CLK); Serial.print("Hz.\n\r");
 		//blink the led
 		digitalWrite(13, !digitalRead(13));	//flip pin 13
 	}
