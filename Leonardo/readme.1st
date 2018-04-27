@@ -1,0 +1,3 @@
+Frequency calibrator implemented over Arduino Leonardo.
+
+Gating is user adjustable, via PPS_CNT.
