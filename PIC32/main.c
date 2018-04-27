@@ -64,12 +64,14 @@
 
 //global variables
 volatile uint16_t tick0, tick1;			//16-bit captures
+volatile uint16_t utick0, utick1;			//16-bit captures
 volatile  int16_t freq_error;			//frequency error
 volatile  int32_t freq;					//frequency measurement
 volatile  uint8_t freq_available=0;		//1->new data available
 volatile  uint8_t pps_cnt = PPS_CNT;	//current 1pps pulse count, downcounter
 char uRAM[80];							//transmitt buffer for uart
 const char str0[]="freq =         Hz.\n\r";
+const char str1[]="tick0 =      Hz, tick1 =      Hz.   \n\r";
 
 //input capture ISR
 void __ISR(_INPUT_CAPTURE_1_VECTOR/*, ipl7*/) _IC1Interrupt(void) {
@@ -80,6 +82,7 @@ void __ISR(_INPUT_CAPTURE_1_VECTOR/*, ipl7*/) _IC1Interrupt(void) {
 	if (pps_cnt == 0) {
 		pps_cnt = PPS_CNT;				//reset pps_cnt
 		freq_error = tick1 - (tick0 + F_CLK * PPS_CNT); freq = F_CLK * PPS_CNT + freq_error; freq = freq * 8;
+		tick0 = tick1;					//update tick0
 		freq_available = 1;				//new data available
 	}
 }
@@ -95,7 +98,7 @@ void tmr2_init(void) {
 	TxCON &=~(1<<3);					//0->16 bit mode, 1->32-bit mode
 	TxCON &=~(1<<1);					//0->count on internal clock, 1->count on external clock
 	//TMRx = 0;							//reset the counter - optional
-	//PRx  =0xffff;						//period = 0xffff
+	PRx  =0xffff;						//period = 0xffff
 	//now start the timer
 	TxCON |= (1<<15);					//1->start the timer, 0->stop the timer
 	//timer now running
