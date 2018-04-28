@@ -8,6 +8,7 @@
 //v0.2: 4/25/2018 - fixed a minor bug in initialization
 //v0.3: 4/26/2018 - ported to Leonardo/ATmega32U4
 //v0.4: 4/27/2018 - ported to PIC32MX
+//v0.5: 4/28/2018 - numerous minor improvements
 //
 //Connections:
 //
