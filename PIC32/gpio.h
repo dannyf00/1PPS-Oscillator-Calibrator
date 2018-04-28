@@ -50,7 +50,7 @@
 //default frequencies
 //user specification
 #ifndef F_XTAL
-#define F_XTAL				25088000ul		//crystal frequency, user-specified
+#define F_XTAL				20000000ul		//crystal frequency, user-specified
 #endif
 #ifndef F_SOSC
 #define F_SOSC				32768			//SOSC = 32768Hz, user-specified
@@ -61,9 +61,9 @@
 
 //to safe time on F_CPU
 extern volatile uint32_t 	SystemCoreClock;			//updated by sysclk_get()
-#define F_CPU				(20000000ul)			//cpu runs at 8Mhz/2 by default -> Fxtal = 8Mhz - can be updated by _F_CPU
+#define F_CPU				(F_XTAL)		//cpu runs at 8Mhz/2 by default -> Fxtal = 8Mhz - can be updated by _F_CPU
 //#define F_CPU				(_F_CPU)		//updated by _F_CPU
-#define F_PHB				(F_CPU / 8)		//peripheral block runs at F_PB - default = F_CPU / 8
+#define F_PHB				((F_CPU) >> (OSCCONbits.PBDIV))		//peripheral block runs at F_PB - default = F_CPU / 8
 #define SystemCoreClockUpdate()	sysclk_get()
 
 //reset the mcu
