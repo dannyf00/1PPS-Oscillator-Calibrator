@@ -45,7 +45,7 @@
 
 //hardware configuration
 //#define F_CLK       F_PHB				//clock of oscillator to be calibrated
-#define PPS_CNT		1					//number of 1pps pulses to count
+#define PPS_CNT		2					//number of 1pps pulses to count
 #define IC1_PIN()	PPS_IC1_TO_RPA4()	//1pps input pin assignment: A2/B6/A4/B13/B2/C6/C1/A3
 #define FREQ_CNT	10					//weight used in smoothing algorithm
 #define SET_PBDIV	2					//current setting of PBDIV, 1/2/4/8 (default)
@@ -82,7 +82,7 @@ volatile  uint8_t freq_available=0;		//1->new data available
 volatile  uint8_t pps_cnt = PPS_CNT;	//current 1pps pulse count, downcounter
 		  int32_t freq_sum, freq_avg, freq_i, freq_f;
 char uRAM[80];							//transmitt buffer for uart
-const char str0[]="freq =         Hz.\n\r";
+const char str0[]="freq =          .000Hz.\n\r";
 
 //input capture ISR
 void __ISR(_INPUT_CAPTURE_1_VECTOR/*, ipl7*/) _IC1Interrupt(void) {
@@ -212,9 +212,9 @@ int main(void) {
 			
 			//smoothing the reading
 			//only run for the first time
-			if (freq_sum==0) {
-				freq_sum = freq * FREQ_CNT;
-				freq_avg = freq;
+			if (freq_sum==0) {			//on the first run, freq_sum is initialized to 0
+				freq_sum = freq * FREQ_CNT;	//initialize freq_sum to freq * FREQ_CNT -> its expected value
+				freq_avg = freq;		//average value
 			}
 			freq_sum += freq - freq_avg;
 			freq_avg = freq_sum / FREQ_CNT;
@@ -223,10 +223,13 @@ int main(void) {
 			freq_f   = freq_sum - freq_avg * FREQ_CNT;
 			
 			//convert freq for transmission
-			tmp = freq;					//display freq
 			//forming the display string
-#if 0
+#if 1
+			//for the integer part of the string
+			//tmp = freq;					//display freq
+			tmp = freq_avg;
 			strcpy(uRAM, str0);			//initialize uart buffer
+			uRAM[15]=(tmp % 10) + '0'; tmp /= 10;
 			uRAM[14]=(tmp % 10) + '0'; tmp /= 10;
 			uRAM[13]=(tmp % 10) + '0'; tmp /= 10;
 			uRAM[12]=(tmp % 10) + '0'; tmp /= 10;
@@ -234,8 +237,14 @@ int main(void) {
 			uRAM[10]=(tmp % 10) + '0'; tmp /= 10;
 			uRAM[ 9]=(tmp % 10) + '0'; tmp /= 10;
 			uRAM[ 8]=(tmp % 10) + '0'; tmp /= 10;
-			uRAM[ 7]=(tmp % 10) + '0'; tmp /= 10;
-#else
+			if (tmp) {uRAM[ 7]=(tmp % 10) + '0'; tmp /= 10;}	//eliminate the leading zero
+			//optional: form the fractional part of the string
+			tmp = freq_f * 1000 / FREQ_CNT;
+			uRAM[19]=(tmp % 10) + '0'; tmp /= 10;
+			uRAM[18]=(tmp % 10) + '0'; tmp /= 10;
+			uRAM[17]=(tmp % 10) + '0'; tmp /= 10;
+			
+#else		//for debugging
 			//sprintf(uRAM, "freq = %8dHz.\n\r");
 			//sprintf(uRAM, "freq_sum=%12ld, freq_i=%12ld, freq_f=%12ld\n\r", freq_sum, freq_i, freq_f);
 			sprintf(uRAM, "freq = %10ldHz, freq = %10ld.%03dHz.\n\r", freq, freq_avg, freq_f * 1000 / FREQ_CNT);
@@ -244,8 +253,8 @@ int main(void) {
 
 			//IO_FLP(LED_PORT, LED);		//flip the led
 		}	
-		//delay_ms(100);
-		//uart1_puts("testing...\n\r");
+		//delay_ms(100);				//waste sometime
+		//uart1_puts("testing...\n\r");	//for debugging
     }
     
     return 0;
